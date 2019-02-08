@@ -464,9 +464,14 @@ static osjob_t sendjob;
 // cycle limitations).
 const unsigned TX_INTERVAL = 10;
 
-// Pin mapping
-const lmic_pinmap lmic_pins = { .nss = 6, .rxtx = LMIC_UNUSED_PIN, .rst =
-		LMIC_UNUSED_PIN, .dio = { 0, 1, LMIC_UNUSED_PIN } };
+// GPIO Pin mapping
+const lmic_pinmap lmic_pins = { 
+	.nss = 6, 
+	.rxtx = LMIC_UNUSED_PIN, 
+	.rst = 18, 
+	.dio = { 2, 3, 0 }	/* DIO2 will be optionally connected with 0ohm resistor */
+};
+		// onion.io: update this mapping
 
 void onEvent(ev_t ev) {
 	printf("%d", os_getTime());

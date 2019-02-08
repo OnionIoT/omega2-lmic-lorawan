@@ -20,7 +20,7 @@ extern "C"{
 #define USE_SPI_TRANSFER_CALLS
 
 /* Hack: use native SPI interface instead of I2C bridge */
-//#define USE_NATIVE_SPI
+#define USE_NATIVE_SPI
 
 /*
  * initialize hardware (IO, SPI, TIMER, IRQ).
@@ -53,7 +53,13 @@ u1_t hal_spi (u1_t outval);
  * Transfer a given buffer to the radio slave, save response in rxBuf
  * allows for higher transfer rates
  */
-void hal_spi_transfer(uint8_t* txBuf, size_t txLen, uint8_t* rxBuf);
+void hal_spi_transfer(uint8_t* txBuf, size_t txLen, uint8_t* rxBuf, size_t rxLen);
+
+/**
+ * Transfer a given buffer to the radio slave
+ * allows for higher transfer rates
+ */
+void hal_spi_write(uint8_t* txBuf, size_t txLen);
 
 /*
  * disable all CPU interrupts.

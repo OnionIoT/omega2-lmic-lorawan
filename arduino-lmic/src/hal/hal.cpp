@@ -12,8 +12,11 @@
 #include "../lmic.h"
 #include "hal.h"
 #include <stdio.h>
-#include "onion-spi.h"
-#include "ugpio.h"
+// #include "onion-spi.h"
+
+//#include "ugpio.h" // onion.io: look into this
+#include "ugpio/ugpio.h"
+
 #include <unistd.h>
 #include <time.h>
 #include <sys/time.h>
@@ -23,7 +26,11 @@
 #define OUTPUT 1
 #define INPUT 0
 
-#ifndef USE_NATIVE_SPI
+#ifdef USE_NATIVE_SPI
+#include "native-spi.h"
+nativeSpi spiDevice(NATIVE_SPI_DEFAULT_BUS, NATIVE_SPI_DEFAULT_DEVICE, NATIVE_SPI_DEFAULT_SPEED);
+// nativeSpi spiDevice();
+#else
 #include "SC18IS602B.h"
 SC18IS602B spiBridge(-1, -1, 0, 0, 0);
 #endif
@@ -160,10 +167,11 @@ static void hal_io_check() {
 // SPI
 
 /* global SPI config object */
-struct spiParams params;
+// struct spiParams params;
 
 static void hal_spi_init () {
 #ifdef USE_NATIVE_SPI
+/*
 	//use default values at first
 	int err = 0;
 	spiParamInit(&params);
@@ -197,7 +205,7 @@ static void hal_spi_init () {
 	if(err == EXIT_FAILURE)  {
 		printf("spiSetupDevice() failed.\n");
 		return;
-	}
+	}*/
 #else
 #ifndef USE_SPI_TRANSFER_CALLS
 	//set GPIO0 to SlaveSelect mode (NOT GPIO mode)
@@ -278,10 +286,16 @@ void hal_pin_nss (u1_t val) {
 
 bool test = false;
 
-void hal_spi_transfer(uint8_t* txBuf, size_t txLen, uint8_t* rxBuf) {
+void hal_spi_transfer(uint8_t* txBuf, size_t txLen, uint8_t* rxBuf, size_t rxLen) {
 #ifdef USE_NATIVE_SPI
+	spiDevice.transfer(txBuf, txLen, rxBuf, rxLen);
+#ifdef NATIVE_SPI_DEBUG
+	printf("TX/RX: %02x %02x | %02x %02x\n",
+		(int)txBuf[0], (int)txBuf[1],
+		(int)rxBuf[0],(int)rxBuf[1]);
+#endif
 
-	if(!test) {
+/*	if(!test) {
 		test = true;
 
 		//test out all SPI values
@@ -304,24 +318,40 @@ void hal_spi_transfer(uint8_t* txBuf, size_t txLen, uint8_t* rxBuf) {
 	if(err == EXIT_FAILURE)
 		printf("[-] SPI transfer failed!\n");
 	hexDump("SPI tx", txBuf, (int)txLen);
-	hexDump("SPI rx", rxBuf, (int)txLen);
+	hexDump("SPI rx", rxBuf, (int)txLen);*/
 #else
 	spiBridge.spiTransfer(0, txBuf, txLen, rxBuf);
 #endif
 }
 
+void hal_spi_write(uint8_t* txBuf, size_t txLen) {
+#ifdef USE_NATIVE_SPI
+	spiDevice.write(txBuf, txLen);
+#ifdef NATIVE_SPI_DEBUG
+	printf("TX: %02x %02x\n",
+		(int)txBuf[0], (int)txBuf[1]);
+#endif
+
+#endif  // USE_NATIVE_SPI
+}
+
 // perform SPI transaction with radio1
 u1_t hal_spi (u1_t out) {
 	uint8_t recv = 0;
+
 #ifdef USE_NATIVE_SPI
-	onionSetVerbosity(ONION_VERBOSITY_VERBOSE);
+	spiDevice.transfer(&out, 1, &recv, 1);
+#ifdef NATIVE_SPI_DEBUG
+	printf("> %02x < %02x\n", (int) out, (int)recv);
+#endif
+	/*onionSetVerbosity(ONION_VERBOSITY_VERBOSE);
 	uint8_t outBuf[2] = { recv, 0};
 	uint8_t inBuf[2] = {0,0};
 	int err = spiTransfer(&params, outBuf, inBuf, 2);
 	printf("[!] > %02x < %02x %02x\n", (int)out, (int)inBuf[0], (int)inBuf[1]);
 	//int err = spiTransfer(&params, &out, &recv, 1);
 	if(err == EXIT_FAILURE)
-		printf("[-] SPI transfer failed!\n");
+		printf("[-] SPI transfer failed!\n");*/
 #else
 	spiBridge.spiTransfer(0, &out, 1, &recv);
 #endif
@@ -476,10 +506,8 @@ void hal_failed (const char *file, u2_t line) {
     LMIC_FAILURE_TO.println(line);
     LMIC_FAILURE_TO.flush();
     */
-
-	printf("FAILURE: %s: %d\n", file, (int)line);
-
 #endif
+    printf("FAILURE: %s: %d\n", file, (int)line);
     hal_disableIRQs();
     while(1);
 }

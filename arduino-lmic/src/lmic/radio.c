@@ -12,6 +12,8 @@
 #include "lmic.h"
 #include <stdlib.h>
 
+// #define RADIO_DEBUG     1
+
 // ----------------------------------------
 // Registers Mapping
 #define RegFifo                                    0x00 // common
@@ -267,8 +269,13 @@ static void writeReg (u1_t addr, u1_t data ) {
     hal_pin_nss(1);
 #else
     uint8_t txBuf[2] = { (uint8_t)(addr | 0x80), data};
+    // uint8_t txBuf[2] = { (uint8_t)(addr), data};
     uint8_t rxBuf[2] = {0, 0};
-    hal_spi_transfer(txBuf, 2, rxBuf);
+    hal_spi_transfer(txBuf, 2, rxBuf, 2);
+    // hal_spi_write(txBuf, 2);
+#ifdef RADIO_DEBUG
+    printf("\tWrite to register 0x%02x: 0x%02x\n", addr, data);
+#endif
 #endif
 }
 
@@ -282,8 +289,12 @@ static u1_t readReg (u1_t addr) {
 #else
     uint8_t txBuf[2] = { (uint8_t)(addr & 0x7F), 0x00};
     uint8_t rxBuf[2] = { 0,0};
-    hal_spi_transfer(txBuf, 2, rxBuf);
-    return rxBuf[1];
+    // hal_spi_transfer(txBuf, 2, rxBuf, 2);
+    hal_spi_transfer(txBuf, 1, rxBuf, 2);   // onion.io: testing hypothesis from page 75 of rfm95w datasheet
+#ifdef RADIO_DEBUG
+    printf("\tRead from register 0x%02x: 0x%02x\n", addr, rxBuf[0]);
+#endif
+    return rxBuf[0];
 #endif
 }
 
@@ -300,7 +311,7 @@ static void writeBuf (u1_t addr, xref2u1_t buf, u1_t len) {
     txBuf[0] = addr | 0x80;
     memcpy(&txBuf[1], buf, len);
     uint8_t* rxBuf = (uint8_t*) malloc(len+1);
-    hal_spi_transfer(txBuf, len+1, rxBuf);
+    hal_spi_transfer(txBuf, len+1, rxBuf, 0);
     memcpy(buf, txBuf+1, len);
     free(txBuf);
     free(rxBuf);
@@ -316,13 +327,13 @@ static void readBuf (u1_t addr, xref2u1_t buf, u1_t len) {
     }
     hal_pin_nss(1);
 #else
-    uint8_t* rxBuf = (uint8_t*) malloc(len+1);
     uint8_t* txBuf = (uint8_t*) malloc(len + 1);
+    uint8_t* rxBuf = (uint8_t*) malloc(len);
     txBuf[0] = addr & 0x7F;
     memset(&txBuf[1], 0, len);
-    memset(rxBuf, 0, len+1);
-    hal_spi_transfer(txBuf, len+1, rxBuf);
-    memcpy(buf, rxBuf + 1, len);
+    memset(rxBuf, 0, len);
+    hal_spi_transfer(txBuf, 1, rxBuf, len);
+    memcpy(buf, rxBuf, len);
     free(rxBuf);
     free(txBuf);
 #endif
@@ -720,7 +731,7 @@ void radio_init () {
 
     // some sanity checks, e.g., read version number
     u1_t v = readReg(RegVersion);
-    //printf("RADIO VERSION: %02x\n", v);
+    printf("RADIO VERSION: %02x\n", v);
 #ifdef CFG_sx1276_radio
     ASSERT(v == 0x12 );
 #elif CFG_sx1272_radio

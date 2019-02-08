@@ -1,5 +1,5 @@
 # C compiler
-CC:= mipsel-openwrt-linux-g++
+CXX:= mipsel-openwrt-linux-g++
 # path where the toolchain is
 TOOLCHAIN_ROOT_DIR:= /home/max/source/staging_dir/target-mipsel_24kc_musl-1.1.16
 #path where the omega_includes and omega_libs folder are
@@ -10,13 +10,13 @@ INCLUDE_DIRS:=$(TOOLCHAIN_ROOT_DIR)/usr/include
 LIB_DIRS:=$(TOOLCHAIN_ROOT_DIR)/usr/lib
 
 #links to link against
-LDFLAGS_LIB:= -loniondebug -lonionspi -lonioni2c -lugpio
-LDFLAGS_PROGRAM = 
+LDFLAGS_LIB:= -loniondebug -lonioni2c -lugpio
+LDFLAGS_PROGRAM =
 CFLAGS:= -O3 -ggdb -g -Wall -Wextra -std=c++14
 IFLAGS:= -I $(INCLUDE_DIRS) -I $(OMEGA_DIR)/omega_includes -I arduino-lmic/src/ -I.
 
 EXAMPLE_SOURCE = lorawan_send
-PROGRAM_SOURCES = $(EXAMPLE_SOURCE).cpp  SC18IS602B.cpp
+PROGRAM_SOURCES = $(EXAMPLE_SOURCE).cpp  native-spi.cpp
 EXECUTABLE:= $(EXAMPLE_SOURCE)
 
 LMIC_SOURCES = \
@@ -30,12 +30,18 @@ LMIC_SOURCES = \
 
 export STAGING_DIR="$TOOLCHAIN_ROOT_DIR/staging_dir/"
 
-.PHONY : program all clean all
+#.PHONY : program all clean all
+
+all: info program 
 
 program:
-	$(CC) -o $(EXECUTABLE) $(CFLAGS) $(IFLAGS) -L $(LIB_DIRS) -L $(OMEGA_DIR)/omega_libs -L. $(PROGRAM_SOURCES) $(LMIC_SOURCES) $(LDFLAGS_PROGRAM) $(LDFLAGS_LIB)
+	$(CXX) -o $(EXECUTABLE) $(CFLAGS) $(LDFLAGS) $(IFLAGS) -L $(LIB_DIRS) -L $(OMEGA_DIR)/omega_libs -L. $(PROGRAM_SOURCES) $(LMIC_SOURCES) $(LDFLAGS_PROGRAM) $(LDFLAGS_LIB)
 
-all: | program
+info:
+	@echo "  INFO"
+	@echo "LDFLAGS_LIB: $(LDFLAGS_LIB)"
+	@echo "CFLAGS: $(CFLAGS)"
+	@echo ""
 
 upload: | all
 	sshpass -p "onioneer" scp $(EXECUTABLE) root@192.168.1.150:/root/.
