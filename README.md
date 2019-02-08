@@ -1,5 +1,16 @@
 # Omega2 LMIC
 
+### Onion Edits
+
+* Added Native SPI implementation - seeing correct bi-directional data transfer
+* Changed to US 915 MHz
+
+To use cross compilation script:
+
+```
+sh xCompile.sh -buildroot <PATH TO BUILD SYSTEM> -lib "-loniondebug -lonioni2c -lugpio"
+```
+
 ### Description
 
 A port of [Arduino-LMIC](https://github.com/matthijskooijman/arduino-lmic) to the Omega2. Will support native SPI and SPI bridges.
